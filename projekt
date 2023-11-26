@@ -1,0 +1,193 @@
+import pygame
+import random
+import heapq
+
+
+class Node():
+    def __init__(self, x, y, cost):
+        self.x = x
+        self.y = y
+        self.pos = (x, y)
+        self.cost = cost
+        self.neighbours = []
+
+
+class Grid():
+    def __init__(self, width, height, cost_map):
+        self.width = width
+        self.height = height
+        self.nodes = {}
+
+        for (x, y), cost in cost_map.items():
+            node = Node(x, y, cost)
+            self.nodes[(x, y)] = node
+
+    def link_nodes(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                node = self.nodes.get((x, y))
+                if node:
+                    for dx in [-1, 0, 1]:
+                        for dy in [-1, 0, 1]:
+                            if (dx != 0) != (dy != 0):
+                                neighbour = self.nodes.get((x + dx, y + dy))
+                                if neighbour:
+                                    node.add_neighbour(neighbour)
+
+    def get_all_nodes(self):
+        return list[self.nodes.values()]
+
+                                    
+class AStarSearch():
+    def __init__(self, grid):
+        self.grid = grid
+
+    def heuristic(self, current, goal):
+        return abs(current[0] - goal[0]) + abs(current[1] - goal[1])
+    
+    def get_neighbours(self, node):
+        x, y = node
+        neighbours = []
+
+        potential_neighbours = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        for neighbour in potential_neighbours:
+            nx, ny = neighbour
+            if 0 <= nx < 50 and 0 <= ny < 50:
+                neighbours.append((nx, ny))
+
+        return neighbours
+    
+
+    def path(self, start, came_from, current):
+        self.came_from = came_from
+        self.current = current
+        self.start = start
+
+        path = [current]
+        while current in came_from:
+            if came_from[current] == None:
+                break
+            current = came_from[current]
+            path.append(current)
+        path.reverse()
+        return path
+
+
+    def search_algorithm(self, start, goal, grid):
+        frontier = []
+        heapq.heappush(frontier, (0, start)) ###
+        came_from = dict()
+        cost_so_far = dict()
+        came_from[start] = None
+        cost_so_far[start] = 0
+        self.grid = grid
+
+        while frontier:
+            current_priority, current = heapq.heappop(frontier) ###
+
+            if current == goal:
+                return self.path(start, came_from, current)
+
+            for neighbour in self.get_neighbours(current):
+                neighbour_node = grid.nodes[neighbour] ###
+                new_cost = cost_so_far[current] + neighbour_node.cost
+                if neighbour not in cost_so_far or new_cost < cost_so_far[neighbour]:
+                    cost_so_far[neighbour] = new_cost
+                    priority = new_cost + self.heuristic(current=current, goal=goal)
+                    heapq.heappush(frontier, (priority, neighbour)) ###
+                    came_from[neighbour] = current 
+      
+
+
+
+
+
+        
+
+
+class App():
+    def __init__(self):
+        self.cost_map = {}
+
+    def color_to_cost(self, color):
+        if color == (153, 255, 51):
+            cost = 0
+        elif color == (51, 153, 255):
+            cost = 10000
+        else:
+            cost = 1000000
+        return cost
+
+
+
+    def terrain(self, screen, grid_size, fraction, color, filled_cells, cost_map):
+        num_cells = int((grid_size**2)*fraction)
+        local_filled = set()
+        while len(local_filled) < num_cells:
+            (x, y) = (random.randint(0,49),random.randint(0,49))
+            if (x, y) not in filled_cells:
+                local_filled.add((x, y))
+                filled_cells.add((x, y))
+                cost_map.update({(x, y): self.color_to_cost(color)})
+        for (x, y) in local_filled:
+            pygame.draw.rect(screen, color, (x*10, y*10, 10, 10))
+            pygame.display.flip()     
+        return filled_cells, cost_map
+    
+    
+    def run(self):
+        pygame.init()
+        screen = pygame.display.set_mode((500, 500))
+        screen.fill((255, 255, 255))
+        grid_size = 50
+        grassland = (153, 255, 51)
+        water = (51, 153, 255)
+        mountain = (160, 160, 160)
+        filled_cells = set()
+        cost_map = {}
+
+        filled_cells, cost_map = self.terrain(screen, grid_size, 0.7, color=grassland, filled_cells=filled_cells, cost_map=cost_map)
+        filled_cells, cost_map = self.terrain(screen, grid_size, 0.2, color=water, filled_cells=filled_cells, cost_map=cost_map)
+        filled_cells, cost_map = self.terrain(screen, grid_size, 0.1, color=mountain, filled_cells=filled_cells, cost_map=cost_map)
+
+
+
+        grid = Grid(grid_size, grid_size, cost_map=cost_map)
+
+
+        search = AStarSearch(grid=grid)
+
+        
+
+        start = (random.randint(0, 49), random.randint(0, 49))
+        goal = (random.randint(0, 49), random.randint(0, 49))
+
+
+        path = search.search_algorithm(start=start, goal=goal, grid=grid)
+
+        for i in path:
+            pygame.draw.rect(screen, (255, 50, 0), (i[0] * 10 + 3, i[1] * 10 + 3, 6, 6))
+            pygame.display.flip()
+
+        
+
+
+
+
+
+app = App()
+app.run() 
+
+running = True
+while running == True:
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                app.run()
+'''
+
+    
+'''
